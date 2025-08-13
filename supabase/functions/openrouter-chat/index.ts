@@ -9,6 +9,7 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
+    console.log("[openrouter-chat] OPTIONS preflight from", req.headers.get("origin"));
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -23,7 +24,12 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || req.headers.get("referer") || "https://lovable.dev";
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
+    console.log("[openrouter-chat] Request received", {
+      hasAuth: !!req.headers.get("authorization"),
+      origin,
+    });
+
     const {
       messages,
       model,
@@ -84,7 +90,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("openrouter-chat error:", err);
+    console.error("[openrouter-chat] error:", err);
     const message = err instanceof Error ? err.message : "Unexpected error";
     return new Response(
       JSON.stringify({ error: message }),

@@ -17,16 +17,30 @@ const Index = () => {
     setLoading(true);
     setAnswer(null);
     try {
-      const { data, error } = await supabase.functions.invoke("openrouter-chat", {
-        body: {
-          messages: [{ role: "user", content: prompt }],
-          model: "openai/gpt-4o-mini",
-        },
-      });
+      // Call the public Edge Function directly to avoid auth issues
+      const resp = await fetch(
+        "https://gchnbyclupgixeodqa.functions.supabase.co/openrouter-chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // Optional but harmless for public functions
+            apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjaG5ieWNsdXBvcGdpeGVvZHFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwNDM1MDYsImV4cCI6MjA3MDYxOTUwNn0.rkRZTZqihBUwOx2bteX-P4JaJV9hJDBOcTVZbBiEPcY",
+          },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: prompt }],
+            model: "openai/gpt-4o-mini",
+          }),
+        }
+      );
 
-      if (error) throw error as any;
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        throw new Error(`Edge Function error ${resp.status}: ${errBody}`);
+      }
 
-      const content = (data as any)?.content ?? (data as any)?.raw?.choices?.[0]?.message?.content;
+      const data = await resp.json();
+      const content = data?.content ?? data?.raw?.choices?.[0]?.message?.content;
       setAnswer(typeof content === "string" ? content : JSON.stringify(content));
       toast({ title: "Response received" });
     } catch (err) {
